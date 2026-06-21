@@ -125,8 +125,7 @@ function createMintEntry(mint) {
       <div class="me-name" title="${mint.name}">${mint.name}</div>
       <div class="me-meta">
         <span class="me-price ${isFree ? 'free' : 'paid'}">${priceLabel}</span>
-        <span class="sep">|</span>
-        <span class="me-amount">A ${qty}</span>
+        ${qty > 1 ? `<span class="sep">|</span><span class="me-amount">x${qty}</span>` : ''}
         <span class="sep">|</span>
         <span class="me-gwei">${gweiVal} Gwei</span>
         <span class="sep">|</span>
