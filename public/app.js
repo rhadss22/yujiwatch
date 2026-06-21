@@ -112,6 +112,7 @@ function createMintEntry(mint) {
   const isFree = parseFloat(mint.value) === 0;
   const priceLabel = formatValue(mint.value);
   const weiVal = mint.valueWei || '0';
+  const gweiVal = weiVal === '0' ? '0' : (parseFloat(weiVal) / 1e9).toFixed(parseFloat(weiVal) / 1e9 < 1 ? 4 : 1);
   const qty = mint.quantity || 1;
   const fnLabel = mint.fnName && !mint.fnName.startsWith('0x') ? mint.fnName : 'mint';
   const time = timeAgo(mint.timestamp);
@@ -124,7 +125,7 @@ function createMintEntry(mint) {
       <div class="me-meta">
         <span class="me-price ${isFree ? 'free' : 'paid'}">${priceLabel}</span>
         <span class="sep">|</span>
-        <span class="me-amount">A ${qty} ${weiVal === '0' ? '0' : weiVal}wei</span>
+        <span class="me-amount">A ${qty} ${gweiVal} Gwei</span>
         <span class="sep">|</span>
         <span class="me-fn">&#9670; ${fnLabel}</span>
         <span class="sep">|</span>
