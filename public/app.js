@@ -12,6 +12,25 @@ const imagePending = new Set();
 let activeTimeWindow = 300000;
 let selectedCollection = null;
 let lastGasPrice = 0;
+const hiddenCollections = new Set(JSON.parse(localStorage.getItem('yuji-hidden') || '[]'));
+
+function saveHidden() {
+  localStorage.setItem('yuji-hidden', JSON.stringify([...hiddenCollections]));
+}
+
+function toggleHidden(address) {
+  if (hiddenCollections.has(address)) hiddenCollections.delete(address);
+  else hiddenCollections.add(address);
+  saveHidden();
+  updateOverview();
+  refreshLiveFeedVisibility();
+}
+
+function refreshLiveFeedVisibility() {
+  mintFeed.querySelectorAll('.mint-entry').forEach(el => {
+    el.style.display = hiddenCollections.has(el.dataset.contract) ? 'none' : '';
+  });
+}
 
 function avatarHtml(contract, name, cls) {
   const initial = name ? name.charAt(0).toUpperCase() : '?';
@@ -165,6 +184,7 @@ function addMint(mint, prepend) {
 
   // Add to live feed
   const entry = createMintEntry(mint);
+  if (hiddenCollections.has(mint.contract)) entry.style.display = 'none';
   if (prepend !== false) {
     mintFeed.prepend(entry);
   } else {
@@ -206,9 +226,14 @@ function updateOverview() {
   }
 
   for (const col of ranked.slice(0, 50)) {
+    const isHidden = hiddenCollections.has(col.address);
     const card = document.createElement('div');
-    card.className = 'ov-card' + (selectedCollection === col.address ? ' active' : '');
+    card.className = 'ov-card' + (selectedCollection === col.address ? ' active' : '') + (isHidden ? ' ov-hidden' : '');
     card.dataset.addr = col.address;
+
+    const eyeIcon = isHidden
+      ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>'
+      : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
 
     card.innerHTML = `
       ${avatarHtml(col.address, col.name, 'ov-avatar')}
@@ -221,9 +246,17 @@ function updateOverview() {
       </div>
       <span class="ov-count">${col.recentCount}</span>
       <span class="ov-price">${formatValue(col.lastPrice)}</span>
+      <button class="ov-hide-btn" data-hide="${col.address}" title="${isHidden ? 'Show' : 'Hide'}">${eyeIcon}</button>
     `;
 
-    card.addEventListener('click', () => showCollection(col.address));
+    card.addEventListener('click', (e) => {
+      if (e.target.closest('.ov-hide-btn')) {
+        e.stopPropagation();
+        toggleHidden(col.address);
+        return;
+      }
+      showCollection(col.address);
+    });
     overviewList.appendChild(card);
   }
 }
@@ -566,9 +599,10 @@ function renderAlertRules() {
       if (action === 'play') {
         const audio = new Audio(rule.sound);
         audio.play();
+        setTimeout(() => { audio.pause(); audio.currentTime = 0; }, 3000);
       } else if (action === 'test') {
         const audio = new Audio(rule.sound);
-        if (rule.soundOn) audio.play();
+        if (rule.soundOn) { audio.play(); setTimeout(() => { audio.pause(); audio.currentTime = 0; }, 3000); }
         if (Notification.permission === 'default') {
           Notification.requestPermission();
         } else if (Notification.permission === 'granted') {
@@ -617,6 +651,7 @@ function fireAlert(rule, name, contract, count) {
   if (rule.soundOn && rule.sound) {
     const audio = new Audio(rule.sound);
     audio.play().catch(() => {});
+    setTimeout(() => { audio.pause(); audio.currentTime = 0; }, 3000);
   }
 }
 
