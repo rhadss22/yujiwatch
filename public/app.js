@@ -691,14 +691,17 @@ renderAlertRules();
 
 // ===== LAYOUT DRAG =====
 const PANELS = [
-  { id: 'panel-overview', label: 'Mints Overview' },
-  { id: 'panel-detail', label: 'Contract Detail' },
-  { id: 'panel-livemints', label: 'Live Mints' },
+  { id: 'panel-overview', label: 'Mints Overview', col: '260px' },
+  { id: 'panel-detail', label: 'Contract Detail', col: '1fr' },
+  { id: 'panel-livemints', label: 'Live Mints', col: '360px' },
 ];
 const DEFAULT_ORDER = PANELS.map(p => p.id);
 let panelOrder = JSON.parse(localStorage.getItem('yuji-layout') || 'null') || [...DEFAULT_ORDER];
 
 function applyLayout() {
+  const main = document.querySelector('main');
+  const cols = panelOrder.map(id => PANELS.find(p => p.id === id).col);
+  main.style.gridTemplateColumns = cols.join(' ');
   panelOrder.forEach((id, i) => {
     const el = document.getElementById(id);
     if (el) el.style.order = i;
