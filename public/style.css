@@ -104,6 +104,11 @@ header {
   font-size: 11px;
 }
 
+.viewers-display {
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+
 /* ===== SETTINGS ===== */
 .settings-btn {
   background: var(--bg-card);

@@ -519,6 +519,8 @@ function connect() {
           }
         }
       }
+    } else if (msg.type === 'viewers') {
+      document.getElementById('viewers-display').innerHTML = `&#128065; ${msg.online} online | ${msg.total} total`;
     }
   };
 }
