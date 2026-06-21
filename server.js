@@ -469,6 +469,47 @@ app.get('/api/image/:address', async (req, res) => {
   }
 });
 
+const holdersCache = new Map();
+
+app.get('/api/holders/:address', async (req, res) => {
+  const addr = req.params.address;
+  if (holdersCache.has(addr)) return res.json(holdersCache.get(addr));
+
+  try {
+    const httpUrl = process.env.ETH_HTTP_RPC;
+    if (!httpUrl) return res.json({ holders: [] });
+    const alchemyBase = httpUrl.replace('/v2/', '/nft/v3/');
+    const key = httpUrl.split('/v2/')[1];
+
+    const ownersResp = await fetch(`${alchemyBase}/getOwnersForContract?contractAddress=${addr}&withTokenBalances=true`);
+    const ownersData = await ownersResp.json();
+
+    if (!ownersData.owners || ownersData.owners.length === 0) return res.json({ holders: [] });
+
+    const sorted = ownersData.owners
+      .map(o => ({ address: o.ownerAddress, tokenCount: o.tokenBalances ? o.tokenBalances.reduce((s, t) => s + parseInt(t.balance || '1'), 0) : 1 }))
+      .sort((a, b) => b.tokenCount - a.tokenCount)
+      .slice(0, 15);
+
+    const p = httpProvider || wsProvider;
+    if (p) {
+      await Promise.all(sorted.map(async (h) => {
+        try {
+          const bal = await throttled(() => p.getBalance(h.address));
+          h.ethBalance = parseFloat(ethers.formatEther(bal));
+        } catch { h.ethBalance = null; }
+      }));
+    }
+
+    const result = { holders: sorted, timestamp: Date.now() };
+    holdersCache.set(addr, result);
+    setTimeout(() => holdersCache.delete(addr), 600_000);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message, holders: [] });
+  }
+});
+
 app.get('/api/stats', (req, res) => {
   const oneMinAgo = Date.now() - 60_000;
   const mintsLastMin = recentMints.filter(m => m.timestamp > oneMinAgo).length;

@@ -826,6 +826,85 @@ img.ov-avatar {
   letter-spacing: 0.5px;
 }
 
+.detail-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  padding: 6px 0;
+}
+
+.detail-section-header h3 {
+  margin-bottom: 0;
+}
+
+.section-expand {
+  font-size: 10px;
+  color: var(--text-dim);
+  transition: transform 0.15s;
+}
+
+.section-expand.open {
+  transform: rotate(180deg);
+}
+
+.holders-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin-bottom: 16px;
+}
+
+.holders-loading {
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 11px;
+  padding: 16px;
+}
+
+.holder-row {
+  display: grid;
+  grid-template-columns: 24px 1fr auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 12px;
+  background: var(--bg-card);
+  font-size: 11px;
+}
+
+.holder-row:hover {
+  background: var(--bg-hover);
+}
+
+.holder-rank {
+  color: var(--text-dim);
+  font-weight: 700;
+  font-size: 10px;
+  text-align: center;
+}
+
+.holder-addr {
+  font-family: 'Courier New', monospace;
+  color: var(--text-secondary);
+  text-decoration: none;
+}
+
+.holder-addr:hover {
+  color: var(--accent);
+}
+
+.holder-tokens {
+  color: var(--accent);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.holder-eth {
+  color: var(--text-secondary);
+  white-space: nowrap;
+  font-size: 10px;
+}
+
 .detail-mints-list {
   display: flex;
   flex-direction: column;

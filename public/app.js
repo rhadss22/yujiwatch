@@ -282,6 +282,11 @@ async function showCollection(address) {
   noSelection.style.display = 'none';
   detailEl.style.display = 'block';
 
+  holdersContainer.innerHTML = '';
+  holdersContainer.style.display = 'none';
+  holdersOpen = false;
+  holdersToggle.querySelector('.section-expand').classList.remove('open');
+
   // Immediate data from local state
   const initial = col.name ? col.name.charAt(0).toUpperCase() : '?';
   const detailAvatar = document.getElementById('detail-avatar');
@@ -409,6 +414,57 @@ function renderDetailMints(col) {
     `;
     mintsList.appendChild(row);
   }
+}
+
+// ===== TOP HOLDERS =====
+const holdersCache = new Map();
+const holdersToggle = document.getElementById('holders-toggle');
+const holdersContainer = document.getElementById('holders-container');
+let holdersOpen = false;
+
+holdersToggle.addEventListener('click', () => {
+  holdersOpen = !holdersOpen;
+  holdersContainer.style.display = holdersOpen ? '' : 'none';
+  holdersToggle.querySelector('.section-expand').classList.toggle('open', holdersOpen);
+  if (holdersOpen && selectedCollection) loadHolders(selectedCollection);
+});
+
+async function loadHolders(contract) {
+  if (holdersCache.has(contract)) {
+    renderHolders(holdersCache.get(contract));
+    return;
+  }
+  holdersContainer.innerHTML = '<div class="holders-loading">Loading holders...</div>';
+  try {
+    const resp = await fetch(`/api/holders/${contract}`);
+    const data = await resp.json();
+    if (data.holders) {
+      holdersCache.set(contract, data.holders);
+      renderHolders(data.holders);
+    }
+  } catch {
+    holdersContainer.innerHTML = '<div class="holders-loading">Failed to load</div>';
+  }
+}
+
+function renderHolders(holders) {
+  holdersContainer.innerHTML = '';
+  if (holders.length === 0) {
+    holdersContainer.innerHTML = '<div class="holders-loading">No holders found</div>';
+    return;
+  }
+  holders.forEach((h, i) => {
+    const row = document.createElement('div');
+    row.className = 'holder-row';
+    const ethStr = h.ethBalance !== null && h.ethBalance !== undefined ? `${h.ethBalance.toFixed(4)} ETH` : '—';
+    row.innerHTML = `
+      <span class="holder-rank">#${i + 1}</span>
+      <a class="holder-addr" href="https://etherscan.io/address/${h.address}" target="_blank" rel="noopener">${shortAddr(h.address)}</a>
+      <span class="holder-tokens">${h.tokenCount} NFTs</span>
+      <span class="holder-eth">${ethStr}</span>
+    `;
+    holdersContainer.appendChild(row);
+  });
 }
 
 // ===== TIME FILTERS =====
