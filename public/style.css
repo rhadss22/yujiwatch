@@ -104,61 +104,101 @@ header {
   font-size: 11px;
 }
 
-/* ===== ALERT CONFIG ===== */
-.alert-config {
-  position: relative;
-}
-
-.alert-btn {
+/* ===== SETTINGS ===== */
+.settings-btn {
   background: var(--bg-card);
   border: 1px solid var(--border);
   color: var(--text-dim);
   cursor: pointer;
-  padding: 3px 8px;
-  font-size: 14px;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-family: inherit;
   transition: all 0.08s;
 }
 
-.alert-btn:hover,
-.alert-btn.active {
+.settings-btn:hover {
   border-color: var(--accent);
   color: var(--accent);
 }
 
-.alert-panel {
-  position: absolute;
-  top: 36px;
-  right: 0;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-light);
-  padding: 12px;
-  width: 320px;
-  z-index: 100;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
-  max-height: 400px;
-  overflow-y: auto;
+.settings-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
 }
 
-.alert-panel-top {
+.settings-box {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-light);
+  width: 460px;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.6);
+}
+
+.settings-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 10px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
 }
 
-.alert-panel-header {
-  font-size: 10px;
+.settings-header h2 {
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.settings-close {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+
+.settings-close:hover {
+  color: var(--text-primary);
+}
+
+.settings-section {
+  padding: 16px 18px;
+}
+
+.settings-section-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.settings-section h3 {
+  font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   color: var(--text-secondary);
 }
 
+.settings-desc {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-bottom: 12px;
+}
+
 .alert-add-btn {
   background: var(--accent);
   border: none;
   color: #000;
-  padding: 3px 10px;
+  padding: 4px 12px;
   font-size: 10px;
   font-family: inherit;
   font-weight: 700;
@@ -174,7 +214,7 @@ header {
 .alert-rule {
   background: var(--bg-card);
   border: 1px solid var(--border);
-  padding: 8px 10px;
+  padding: 10px 12px;
   margin-bottom: 6px;
   font-size: 11px;
   color: var(--text-dim);
@@ -187,7 +227,7 @@ header {
 .alert-rule-top {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
   margin-bottom: 6px;
   flex-wrap: wrap;
 }
@@ -197,11 +237,11 @@ header {
 }
 
 .alert-input {
-  width: 42px;
+  width: 45px;
   background: var(--bg-input);
   border: 1px solid var(--border);
   color: var(--text-primary);
-  padding: 2px 4px;
+  padding: 3px 5px;
   font-size: 11px;
   font-family: inherit;
   text-align: center;
@@ -211,28 +251,27 @@ header {
   background: var(--bg-input);
   border: 1px solid var(--border);
   color: var(--text-primary);
-  padding: 2px 4px;
+  padding: 3px 5px;
   font-size: 11px;
   font-family: inherit;
-  max-width: 100%;
 }
 
 .alert-select-sound {
   background: var(--bg-input);
   border: 1px solid var(--border);
   color: var(--text-primary);
-  padding: 2px 4px;
+  padding: 3px 5px;
   font-size: 10px;
   font-family: inherit;
   width: 100%;
-  margin-top: 4px;
+  margin-top: 6px;
 }
 
 .alert-rule-bottom {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin-top: 6px;
+  gap: 8px;
+  margin-top: 8px;
 }
 
 .alert-rule-bottom label {
@@ -251,16 +290,19 @@ header {
   background: none;
   border: 1px solid var(--border);
   color: var(--text-dim);
-  padding: 2px 8px;
+  padding: 3px 10px;
   font-size: 10px;
   font-family: inherit;
   cursor: pointer;
-  margin-left: auto;
 }
 
 .alert-rule-btn:hover {
   border-color: var(--accent);
   color: var(--accent);
+}
+
+.alert-rule-btn.delete {
+  margin-left: auto;
 }
 
 .alert-rule-btn.delete:hover {

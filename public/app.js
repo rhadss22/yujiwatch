@@ -483,8 +483,9 @@ function connect() {
 connect();
 
 // ===== MINT ALERTS =====
-const alertToggle = document.getElementById('alert-toggle');
-const alertPanel = document.getElementById('alert-panel');
+const settingsToggle = document.getElementById('settings-toggle');
+const settingsOverlay = document.getElementById('settings-overlay');
+const settingsClose = document.getElementById('settings-close');
 const alertRulesEl = document.getElementById('alert-rules');
 const alertAddBtn = document.getElementById('alert-add');
 
@@ -581,17 +582,16 @@ function renderAlertRules() {
   });
 }
 
-alertToggle.addEventListener('click', () => {
-  const open = alertPanel.style.display === 'none';
-  alertPanel.style.display = open ? 'block' : 'none';
-  alertToggle.classList.toggle('active', open);
+settingsToggle.addEventListener('click', () => {
+  settingsOverlay.style.display = 'flex';
 });
 
-document.addEventListener('click', (e) => {
-  if (!e.target.closest('.alert-config')) {
-    alertPanel.style.display = 'none';
-    alertToggle.classList.remove('active');
-  }
+settingsClose.addEventListener('click', () => {
+  settingsOverlay.style.display = 'none';
+});
+
+settingsOverlay.addEventListener('click', (e) => {
+  if (e.target === settingsOverlay) settingsOverlay.style.display = 'none';
 });
 
 alertAddBtn.addEventListener('click', () => {
