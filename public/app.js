@@ -124,9 +124,9 @@ function createMintEntry(mint) {
       <div class="me-meta">
         <span class="me-price ${isFree ? 'free' : 'paid'}">${priceLabel}</span>
         <span class="sep">|</span>
-        <span class="me-gwei">&#923; ${gas} Gwei</span>
-        <span class="sep">|</span>
         <span class="me-fn">&#9670; ${fnLabel}</span>
+        <span class="sep">|</span>
+        <span class="me-gas">&#9981; ${gas}</span>
       </div>
     </div>
     <div class="me-right">
