@@ -503,8 +503,20 @@ function connect() {
         mint.quantity = msg.quantity;
         const el = mintFeed.querySelector(`[data-txhash="${msg.txHash}"]`);
         if (el) {
-          const amtEl = el.querySelector('.me-amount');
-          if (amtEl) amtEl.textContent = `A ${msg.quantity} ${mint.valueWei || '0'}wei`;
+          const nameEl = el.querySelector('.me-name');
+          if (nameEl) {
+            const existing = nameEl.querySelector('.me-qty-badge');
+            if (msg.quantity > 1) {
+              if (existing) {
+                existing.textContent = `x${msg.quantity}`;
+              } else {
+                const badge = document.createElement('span');
+                badge.className = 'me-qty-badge';
+                badge.textContent = `x${msg.quantity}`;
+                nameEl.appendChild(badge);
+              }
+            }
+          }
         }
       }
     }
