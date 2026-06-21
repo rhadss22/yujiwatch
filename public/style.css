@@ -998,6 +998,11 @@ img.me-avatar {
   color: var(--text-dim);
 }
 
+.me-gwei {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
 .me-fn {
   color: var(--accent);
   font-weight: 600;
