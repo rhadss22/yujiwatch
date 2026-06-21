@@ -451,6 +451,7 @@ function connect() {
 
     if (msg.type === 'mint') {
       addMint(msg.data);
+      checkAlerts(msg.data);
       updateOverview();
     } else if (msg.type === 'history') {
       for (const m of msg.mints.reverse()) {
@@ -480,6 +481,79 @@ function connect() {
 }
 
 connect();
+
+// ===== MINT ALERTS =====
+const alertToggle = document.getElementById('alert-toggle');
+const alertPanel = document.getElementById('alert-panel');
+const alertEnabled = document.getElementById('alert-enabled');
+const alertCount = document.getElementById('alert-count');
+const alertWindow = document.getElementById('alert-window');
+const alertTest = document.getElementById('alert-test');
+const notifiedCollections = new Map();
+
+alertToggle.addEventListener('click', () => {
+  const open = alertPanel.style.display === 'none';
+  alertPanel.style.display = open ? 'block' : 'none';
+  alertToggle.classList.toggle('active', open);
+});
+
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.alert-config')) {
+    alertPanel.style.display = 'none';
+    alertToggle.classList.remove('active');
+  }
+});
+
+alertEnabled.addEventListener('change', () => {
+  if (alertEnabled.checked && Notification.permission === 'default') {
+    Notification.requestPermission();
+  }
+});
+
+alertTest.addEventListener('click', () => {
+  if (Notification.permission === 'default') {
+    Notification.requestPermission().then(p => {
+      if (p === 'granted') sendAlert('Test Collection', '0x0000...0000', 99, 'Test alert working!');
+    });
+  } else if (Notification.permission === 'granted') {
+    sendAlert('Test Collection', '0x0000...0000', 99, 'Test alert working!');
+  }
+});
+
+function sendAlert(name, contract, count, body) {
+  const img = imageCache.get(contract) || 'yuji.jpeg';
+  const n = new Notification(`🔥 ${name}`, {
+    body: body || `${count} mints detected!`,
+    icon: img,
+    tag: contract,
+    requireInteraction: false,
+  });
+  n.onclick = () => {
+    window.focus();
+    showCollection(contract);
+    n.close();
+  };
+}
+
+function checkAlerts(mint) {
+  if (!alertEnabled.checked || Notification.permission !== 'granted') return;
+
+  const threshold = parseInt(alertCount.value) || 10;
+  const window = parseInt(alertWindow.value) || 300000;
+  const cutoff = Date.now() - window;
+
+  const col = collections.get(mint.contract);
+  if (!col) return;
+
+  const recentCount = col.mints.filter(m => m.timestamp > cutoff).length;
+  if (recentCount < threshold) return;
+
+  const lastNotified = notifiedCollections.get(mint.contract) || 0;
+  if (Date.now() - lastNotified < 60000) return;
+
+  notifiedCollections.set(mint.contract, Date.now());
+  sendAlert(col.name, mint.contract, recentCount, `${recentCount} mints in the last ${alertWindow.selectedOptions[0].text}`);
+}
 
 // ===== PERIODIC UPDATES =====
 setInterval(() => {

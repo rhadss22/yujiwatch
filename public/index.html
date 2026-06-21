@@ -18,6 +18,30 @@
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
       <input type="text" id="search-input" placeholder="Search by collection Name or Address">
     </div>
+    <div class="alert-config">
+      <button id="alert-toggle" class="alert-btn" title="Mint Alerts">&#128276;</button>
+      <div id="alert-panel" class="alert-panel" style="display:none">
+        <div class="alert-panel-header">Mint Alerts</div>
+        <div class="alert-row">
+          <span>Alert when</span>
+          <input type="number" id="alert-count" value="10" min="1" class="alert-input">
+          <span>mints in</span>
+          <select id="alert-window" class="alert-select">
+            <option value="60000">1 min</option>
+            <option value="180000">3 min</option>
+            <option value="300000" selected>5 min</option>
+            <option value="600000">10 min</option>
+          </select>
+        </div>
+        <div class="alert-row">
+          <label class="alert-toggle-label">
+            <input type="checkbox" id="alert-enabled">
+            <span>Enabled</span>
+          </label>
+          <button id="alert-test" class="alert-test-btn">Test</button>
+        </div>
+      </div>
+    </div>
     <div class="header-right">
       <span id="status" class="status offline">&#9679; Connecting...</span>
       <span id="gas-display" class="gas-display">&#9981; -- gwei</span>
