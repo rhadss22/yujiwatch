@@ -791,6 +791,35 @@ img.ov-avatar {
   color: var(--text-primary);
 }
 
+.deployer-stats {
+  display: flex;
+  gap: 1px;
+  margin: 6px 0;
+  background: var(--border);
+}
+
+.deployer-stat {
+  flex: 1;
+  background: var(--bg-hover);
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.deployer-stat-label {
+  font-size: 9px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.deployer-stat-value {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
 .deploy-row {
   display: flex;
   align-items: center;

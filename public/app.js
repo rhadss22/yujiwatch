@@ -322,6 +322,8 @@ async function showCollection(address) {
   document.getElementById('deploy-wallet').href = '#';
   document.getElementById('deploy-time').textContent = '';
   document.getElementById('deploy-time').href = '#';
+  document.getElementById('deployer-balance').textContent = '—';
+  document.getElementById('deployer-age').textContent = '—';
 
   // First/last mint from local data
   const localFirst = col.mints.length > 0 ? col.mints[col.mints.length - 1] : null;
@@ -377,6 +379,21 @@ async function showCollection(address) {
       const timeEl = document.getElementById('deploy-time');
       timeEl.textContent = data.deployTime ? timeAgoLabel(data.deployTime) : '';
       timeEl.href = `https://etherscan.io/tx/${data.deployTx}`;
+    }
+
+    // Deployer balance & wallet age
+    if (data.deployerBalance !== null && data.deployerBalance !== undefined) {
+      const bal = data.deployerBalance;
+      document.getElementById('deployer-balance').textContent = bal < 0.01 ? bal.toFixed(4) + ' ETH' : bal.toFixed(2) + ' ETH';
+    }
+    if (data.deployerAge) {
+      const ageDays = Math.floor((Date.now() - data.deployerAge) / 86400000);
+      let ageStr;
+      if (ageDays < 1) ageStr = 'Today';
+      else if (ageDays < 30) ageStr = ageDays + ' days';
+      else if (ageDays < 365) ageStr = Math.floor(ageDays / 30) + ' months';
+      else ageStr = (ageDays / 365).toFixed(1) + ' years';
+      document.getElementById('deployer-age').textContent = ageStr;
     }
 
     // First/last from server (more accurate if more history)

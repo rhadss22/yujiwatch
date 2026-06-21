@@ -434,6 +434,27 @@ app.get('/api/collection/:address', async (req, res) => {
     const firstMint = mints.length > 0 ? mints[mints.length - 1] : null;
     const lastMint = mints.length > 0 ? mints[0] : null;
 
+    let deployerBalance = null;
+    let deployerAge = null;
+    const p = httpProvider || wsProvider;
+    if (extended.deployer && p) {
+      await Promise.allSettled([
+        (async () => {
+          const bal = await throttled(() => p.getBalance(extended.deployer));
+          deployerBalance = parseFloat(ethers.formatEther(bal));
+        })(),
+        (async () => {
+          const etherscanKey = process.env.ETHERSCAN_API_KEY || '';
+          const keyParam = etherscanKey ? `&apikey=${etherscanKey}` : '';
+          const resp = await fetch(`https://api.etherscan.io/api?module=account&action=txlist&address=${extended.deployer}&startblock=0&endblock=99999999&page=1&offset=1&sort=asc${keyParam}`);
+          const data = await resp.json();
+          if (data.result?.length > 0 && data.result[0].timeStamp) {
+            deployerAge = parseInt(data.result[0].timeStamp) * 1000;
+          }
+        })(),
+      ]);
+    }
+
     res.json({
       ...info,
       ...extended,
@@ -441,6 +462,8 @@ app.get('/api/collection/:address', async (req, res) => {
       uniqueMinters,
       firstMintTime: firstMint?.timestamp || null,
       lastMintTime: lastMint?.timestamp || null,
+      deployerBalance,
+      deployerAge,
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
