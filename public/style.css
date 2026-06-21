@@ -966,6 +966,18 @@ img.me-avatar {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.me-qty-badge {
+  background: var(--accent-dim);
+  color: #000;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 5px;
+  flex-shrink: 0;
 }
 
 .me-meta {
@@ -994,23 +1006,14 @@ img.me-avatar {
   color: var(--text-secondary);
 }
 
-.me-amount {
-  color: var(--text-dim);
-}
-
 .me-gwei {
-  color: var(--text-secondary);
+  color: var(--orange);
   font-weight: 500;
 }
 
 .me-fn {
   color: var(--accent);
   font-weight: 600;
-}
-
-.me-gas {
-  color: var(--orange);
-  font-size: 10px;
 }
 
 .me-right {

@@ -111,27 +111,22 @@ function createMintEntry(mint) {
 
   const isFree = parseFloat(mint.value) === 0;
   const priceLabel = formatValue(mint.value);
-  const weiVal = mint.valueWei || '0';
-  const gweiNum = parseFloat(weiVal) / 1e9;
-  const gweiVal = gweiNum === 0 ? '0' : gweiNum < 0.01 ? gweiNum.toFixed(4) : gweiNum < 100 ? gweiNum.toFixed(2) : Math.round(gweiNum).toLocaleString();
   const qty = mint.quantity || 1;
   const fnLabel = mint.fnName && !mint.fnName.startsWith('0x') ? mint.fnName : 'mint';
   const time = timeAgo(mint.timestamp);
   const gas = mint.gasPrice || 0;
+  const qtyBadge = qty > 1 ? `<span class="me-qty-badge">x${qty}</span>` : '';
 
   el.innerHTML = `
     ${avatarHtml(mint.contract, mint.name, 'me-avatar')}
     <div class="me-body">
-      <div class="me-name" title="${mint.name}">${mint.name}</div>
+      <div class="me-name" title="${mint.name}">${mint.name} ${qtyBadge}</div>
       <div class="me-meta">
         <span class="me-price ${isFree ? 'free' : 'paid'}">${priceLabel}</span>
-        ${qty > 1 ? `<span class="sep">|</span><span class="me-amount">x${qty}</span>` : ''}
         <span class="sep">|</span>
-        <span class="me-gwei">${gweiVal} Gwei</span>
+        <span class="me-gwei">&#923; ${gas} Gwei</span>
         <span class="sep">|</span>
         <span class="me-fn">&#9670; ${fnLabel}</span>
-        <span class="sep">|</span>
-        <span class="me-gas">&#9981; ${gas}</span>
       </div>
     </div>
     <div class="me-right">
