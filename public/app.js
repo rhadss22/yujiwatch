@@ -1,3 +1,6 @@
+if (new URLSearchParams(location.search).has('admin')) localStorage.setItem('yuji-admin', '1');
+const isAdmin = localStorage.getItem('yuji-admin') === '1';
+
 const mintFeed = document.getElementById('mint-feed');
 const statusEl = document.getElementById('status');
 const gasEl = document.getElementById('gas-display');
@@ -519,8 +522,10 @@ function connect() {
           }
         }
       }
-    } else if (msg.type === 'viewers') {
-      document.getElementById('viewers-display').innerHTML = `&#128065; ${msg.online} online | ${msg.total} total`;
+    } else if (msg.type === 'viewers' && isAdmin) {
+      const vd = document.getElementById('viewers-display');
+      vd.style.display = '';
+      vd.innerHTML = `&#128065; ${msg.online} online | ${msg.total} total`;
     }
   };
 }
