@@ -150,7 +150,7 @@ function createMintEntry(mint) {
 // ===== ADD MINT =====
 function addMint(mint, prepend) {
   allMints.unshift(mint);
-  if (allMints.length > 500) allMints.pop();
+  if (allMints.length > 5000) allMints.pop();
 
   if (!collections.has(mint.contract)) {
     collections.set(mint.contract, {

@@ -1,6 +1,8 @@
 require('dotenv').config();
 const express = require('express');
 const http = require('http');
+const fs = require('fs');
+const path = require('path');
 const { WebSocketServer, WebSocket } = require('ws');
 const { ethers } = require('ethers');
 
@@ -19,8 +21,29 @@ app.use(express.static('public'));
 
 const clients = new Set();
 const contractCache = new Map();
-const recentMints = [];
-const MAX_RECENT = 200;
+const MINTS_FILE = path.join(__dirname, 'mints_history.json');
+const MAX_RECENT = 5000;
+const MAX_AGE = 24 * 60 * 60 * 1000;
+
+let recentMints = [];
+try {
+  if (fs.existsSync(MINTS_FILE)) {
+    const raw = JSON.parse(fs.readFileSync(MINTS_FILE, 'utf8'));
+    const cutoff = Date.now() - MAX_AGE;
+    recentMints = raw.filter(m => m.timestamp > cutoff);
+    console.log(`Loaded ${recentMints.length} mints from history`);
+  }
+} catch { recentMints = []; }
+
+let savePending = false;
+function scheduleSave() {
+  if (savePending) return;
+  savePending = true;
+  setTimeout(() => {
+    savePending = false;
+    try { fs.writeFileSync(MINTS_FILE, JSON.stringify(recentMints)); } catch {}
+  }, 10_000);
+}
 const processedKeys = new Map();
 
 let wsProvider = null;
@@ -49,7 +72,7 @@ let currentStatus = { type: 'status', connected: false, message: 'Starting...' }
 wss.on('connection', (ws) => {
   clients.add(ws);
   ws.send(JSON.stringify(currentStatus));
-  ws.send(JSON.stringify({ type: 'history', mints: recentMints.slice(0, 50) }));
+  ws.send(JSON.stringify({ type: 'history', mints: recentMints }));
   ws.on('close', () => clients.delete(ws));
 });
 
@@ -204,6 +227,7 @@ async function handleLog(log, standard) {
     processedKeys.set(key, mint);
     recentMints.unshift(mint);
     if (recentMints.length > MAX_RECENT) recentMints.pop();
+    scheduleSave();
 
     broadcast({ type: 'mint', data: mint });
     console.log(`MINT: ${info.name} (${standard}) ${value} ETH | ${minter ? minter.slice(0, 10) : '?'}...`);
@@ -278,10 +302,14 @@ async function startListener() {
 
     if (!cleanupInterval) {
       cleanupInterval = setInterval(() => {
-        const cutoff = Date.now() - 60_000;
+        const keyCutoff = Date.now() - 60_000;
         for (const [key, mint] of processedKeys) {
-          if (mint.timestamp < cutoff) processedKeys.delete(key);
+          if (mint.timestamp < keyCutoff) processedKeys.delete(key);
         }
+        const ageCutoff = Date.now() - MAX_AGE;
+        const before = recentMints.length;
+        recentMints = recentMints.filter(m => m.timestamp > ageCutoff);
+        if (recentMints.length < before) scheduleSave();
       }, 30_000);
     }
 
