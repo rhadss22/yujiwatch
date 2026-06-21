@@ -631,6 +631,7 @@ function renderAlertRules() {
 
 settingsToggle.addEventListener('click', () => {
   settingsOverlay.style.display = 'flex';
+  renderLayoutPanels();
 });
 
 settingsClose.addEventListener('click', () => {
@@ -687,6 +688,82 @@ function checkAlerts(mint) {
 }
 
 renderAlertRules();
+
+// ===== LAYOUT DRAG =====
+const PANELS = [
+  { id: 'panel-overview', label: 'Mints Overview' },
+  { id: 'panel-detail', label: 'Contract Detail' },
+  { id: 'panel-livemints', label: 'Live Mints' },
+];
+const DEFAULT_ORDER = PANELS.map(p => p.id);
+let panelOrder = JSON.parse(localStorage.getItem('yuji-layout') || 'null') || [...DEFAULT_ORDER];
+
+function applyLayout() {
+  panelOrder.forEach((id, i) => {
+    const el = document.getElementById(id);
+    if (el) el.style.order = i;
+  });
+}
+
+function renderLayoutPanels() {
+  const container = document.getElementById('layout-panels');
+  if (!container) return;
+  container.innerHTML = '';
+  let dragSrc = null;
+
+  panelOrder.forEach((id, i) => {
+    const panel = PANELS.find(p => p.id === id);
+    const item = document.createElement('div');
+    item.className = 'layout-item';
+    item.draggable = true;
+    item.dataset.idx = i;
+    item.innerHTML = `<span class="drag-handle">&#8942;&#8942;</span> ${panel.label}`;
+
+    item.addEventListener('dragstart', (e) => {
+      dragSrc = i;
+      e.dataTransfer.effectAllowed = 'move';
+      item.style.opacity = '0.4';
+    });
+
+    item.addEventListener('dragend', () => {
+      item.style.opacity = '1';
+      container.querySelectorAll('.layout-item').forEach(el => el.classList.remove('drag-over'));
+    });
+
+    item.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      item.classList.add('drag-over');
+    });
+
+    item.addEventListener('dragleave', () => {
+      item.classList.remove('drag-over');
+    });
+
+    item.addEventListener('drop', (e) => {
+      e.preventDefault();
+      item.classList.remove('drag-over');
+      const target = i;
+      if (dragSrc === null || dragSrc === target) return;
+      const moved = panelOrder.splice(dragSrc, 1)[0];
+      panelOrder.splice(target, 0, moved);
+      localStorage.setItem('yuji-layout', JSON.stringify(panelOrder));
+      applyLayout();
+      renderLayoutPanels();
+    });
+
+    container.appendChild(item);
+  });
+}
+
+document.getElementById('layout-reset').addEventListener('click', () => {
+  panelOrder = [...DEFAULT_ORDER];
+  localStorage.setItem('yuji-layout', JSON.stringify(panelOrder));
+  applyLayout();
+  renderLayoutPanels();
+});
+
+applyLayout();
 
 // ===== PERIODIC UPDATES =====
 setInterval(() => {

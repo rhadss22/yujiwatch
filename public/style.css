@@ -211,6 +211,41 @@ header {
   background: var(--accent-dim);
 }
 
+.layout-panels {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.layout-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  cursor: grab;
+  font-size: 12px;
+  font-weight: 600;
+  user-select: none;
+  transition: border-color 0.1s, background 0.1s;
+}
+
+.layout-item:active {
+  cursor: grabbing;
+}
+
+.layout-item.drag-over {
+  border-color: var(--accent);
+  background: var(--bg-hover);
+}
+
+.layout-item .drag-handle {
+  color: var(--text-dim);
+  font-size: 14px;
+  letter-spacing: 2px;
+}
+
 .alert-rule {
   background: var(--bg-card);
   border: 1px solid var(--border);
