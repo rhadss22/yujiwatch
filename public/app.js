@@ -485,11 +485,101 @@ connect();
 // ===== MINT ALERTS =====
 const alertToggle = document.getElementById('alert-toggle');
 const alertPanel = document.getElementById('alert-panel');
-const alertEnabled = document.getElementById('alert-enabled');
-const alertCount = document.getElementById('alert-count');
-const alertWindow = document.getElementById('alert-window');
-const alertTest = document.getElementById('alert-test');
-const notifiedCollections = new Map();
+const alertRulesEl = document.getElementById('alert-rules');
+const alertAddBtn = document.getElementById('alert-add');
+
+const ALERT_SOUNDS = [
+  { file: 'audley_fergine-warning-alarm-loop-1-279206.mp3', label: 'Warning Alarm' },
+  { file: 'dragon-studio-car-engine-372477.mp3', label: 'Car Engine' },
+  { file: 'dragon-studio-car-engine-roaring-376881.mp3', label: 'Engine Roaring' },
+  { file: 'freesound_community-beep-warning-6387.mp3', label: 'Beep Warning' },
+  { file: 'freesound_community-warning-sound-6686.mp3', label: 'Warning Sound' },
+  { file: 'pwlpl-tornado-warning-siren-sound-effect-359252.mp3', label: 'Tornado Siren' },
+  { file: 'universfield-new-notification-09-352705.mp3', label: 'Notification' },
+];
+
+const audioCache = {};
+ALERT_SOUNDS.forEach(s => { audioCache[s.file] = new Audio(s.file); });
+
+let alertRules = JSON.parse(localStorage.getItem('yuji-alerts') || '[]');
+if (alertRules.length === 0) {
+  alertRules.push({ count: 10, window: 300000, sound: ALERT_SOUNDS[0].file, enabled: true, soundOn: true });
+}
+
+const notifiedMap = new Map();
+
+function saveAlertRules() {
+  localStorage.setItem('yuji-alerts', JSON.stringify(alertRules));
+}
+
+function renderAlertRules() {
+  alertRulesEl.innerHTML = '';
+  alertRules.forEach((rule, i) => {
+    const div = document.createElement('div');
+    div.className = 'alert-rule' + (rule.enabled ? ' enabled' : '');
+
+    const windowLabels = [
+      { v: 60000, l: '1 min' }, { v: 180000, l: '3 min' }, { v: 300000, l: '5 min' },
+      { v: 600000, l: '10 min' }, { v: 1800000, l: '30 min' }, { v: 3600000, l: '1 hr' },
+    ];
+    const windowOpts = windowLabels.map(w =>
+      `<option value="${w.v}" ${rule.window === w.v ? 'selected' : ''}>${w.l}</option>`
+    ).join('');
+
+    const soundOpts = ALERT_SOUNDS.map(s =>
+      `<option value="${s.file}" ${rule.sound === s.file ? 'selected' : ''}>${s.label}</option>`
+    ).join('');
+
+    div.innerHTML = `
+      <div class="alert-rule-top">
+        <span>Alert at</span>
+        <input type="number" value="${rule.count}" min="1" class="alert-input" data-field="count">
+        <span>mints in</span>
+        <select class="alert-select" data-field="window">${windowOpts}</select>
+      </div>
+      <select class="alert-select-sound" data-field="sound">${soundOpts}</select>
+      <div class="alert-rule-bottom">
+        <label><input type="checkbox" ${rule.enabled ? 'checked' : ''} data-field="enabled"> ON</label>
+        <label><input type="checkbox" ${rule.soundOn ? 'checked' : ''} data-field="soundOn"> &#128266;</label>
+        <button class="alert-rule-btn" data-action="test">Test</button>
+        <button class="alert-rule-btn delete" data-action="delete">&#10005;</button>
+      </div>
+    `;
+
+    div.addEventListener('change', (e) => {
+      const f = e.target.dataset.field;
+      if (!f) return;
+      if (f === 'count') rule.count = parseInt(e.target.value) || 1;
+      else if (f === 'window') rule.window = parseInt(e.target.value);
+      else if (f === 'sound') rule.sound = e.target.value;
+      else if (f === 'enabled') { rule.enabled = e.target.checked; div.classList.toggle('enabled', rule.enabled); }
+      else if (f === 'soundOn') rule.soundOn = e.target.checked;
+      saveAlertRules();
+      if (f === 'enabled' && rule.enabled && Notification.permission === 'default') {
+        Notification.requestPermission();
+      }
+    });
+
+    div.addEventListener('click', (e) => {
+      const action = e.target.dataset.action;
+      if (action === 'test') {
+        if (Notification.permission === 'default') {
+          Notification.requestPermission().then(p => {
+            if (p === 'granted') fireAlert(rule, 'Test Collection', '0x0000', 99);
+          });
+        } else {
+          fireAlert(rule, 'Test Collection', '0x0000', 99);
+        }
+      } else if (action === 'delete') {
+        alertRules.splice(i, 1);
+        saveAlertRules();
+        renderAlertRules();
+      }
+    });
+
+    alertRulesEl.appendChild(div);
+  });
+}
 
 alertToggle.addEventListener('click', () => {
   const open = alertPanel.style.display === 'none';
@@ -504,56 +594,51 @@ document.addEventListener('click', (e) => {
   }
 });
 
-alertEnabled.addEventListener('change', () => {
-  if (alertEnabled.checked && Notification.permission === 'default') {
-    Notification.requestPermission();
-  }
+alertAddBtn.addEventListener('click', () => {
+  alertRules.push({ count: 10, window: 300000, sound: ALERT_SOUNDS[0].file, enabled: true, soundOn: true });
+  saveAlertRules();
+  renderAlertRules();
 });
 
-alertTest.addEventListener('click', () => {
-  if (Notification.permission === 'default') {
-    Notification.requestPermission().then(p => {
-      if (p === 'granted') sendAlert('Test Collection', '0x0000...0000', 99, 'Test alert working!');
-    });
-  } else if (Notification.permission === 'granted') {
-    sendAlert('Test Collection', '0x0000...0000', 99, 'Test alert working!');
-  }
-});
-
-function sendAlert(name, contract, count, body) {
+function fireAlert(rule, name, contract, count) {
   const img = imageCache.get(contract) || 'yuji.jpeg';
-  const n = new Notification(`🔥 ${name}`, {
-    body: body || `${count} mints detected!`,
-    icon: img,
-    tag: contract,
-    requireInteraction: false,
-  });
-  n.onclick = () => {
-    window.focus();
-    showCollection(contract);
-    n.close();
-  };
+  if (Notification.permission === 'granted') {
+    const n = new Notification(`🔥 ${name}`, {
+      body: `${count} mints detected!`,
+      icon: img,
+      tag: contract + '-' + rule.count,
+      silent: true,
+    });
+    n.onclick = () => { window.focus(); showCollection(contract); n.close(); };
+  }
+  if (rule.soundOn && rule.sound) {
+    const audio = audioCache[rule.sound];
+    if (audio) { audio.currentTime = 0; audio.play().catch(() => {}); }
+  }
 }
 
 function checkAlerts(mint) {
-  if (!alertEnabled.checked || Notification.permission !== 'granted') return;
-
-  const threshold = parseInt(alertCount.value) || 10;
-  const window = parseInt(alertWindow.value) || 300000;
-  const cutoff = Date.now() - window;
+  if (Notification.permission !== 'granted') return;
 
   const col = collections.get(mint.contract);
   if (!col) return;
 
-  const recentCount = col.mints.filter(m => m.timestamp > cutoff).length;
-  if (recentCount < threshold) return;
+  for (const rule of alertRules) {
+    if (!rule.enabled) continue;
+    const cutoff = Date.now() - rule.window;
+    const recentCount = col.mints.filter(m => m.timestamp > cutoff).length;
+    if (recentCount < rule.count) continue;
 
-  const lastNotified = notifiedCollections.get(mint.contract) || 0;
-  if (Date.now() - lastNotified < 60000) return;
+    const key = mint.contract + ':' + rule.count + ':' + rule.window;
+    const lastNotified = notifiedMap.get(key) || 0;
+    if (Date.now() - lastNotified < 60000) continue;
 
-  notifiedCollections.set(mint.contract, Date.now());
-  sendAlert(col.name, mint.contract, recentCount, `${recentCount} mints in the last ${alertWindow.selectedOptions[0].text}`);
+    notifiedMap.set(key, Date.now());
+    fireAlert(rule, col.name, mint.contract, recentCount);
+  }
 }
+
+renderAlertRules();
 
 // ===== PERIODIC UPDATES =====
 setInterval(() => {

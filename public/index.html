@@ -21,25 +21,11 @@
     <div class="alert-config">
       <button id="alert-toggle" class="alert-btn" title="Mint Alerts">&#128276;</button>
       <div id="alert-panel" class="alert-panel" style="display:none">
-        <div class="alert-panel-header">Mint Alerts</div>
-        <div class="alert-row">
-          <span>Alert when</span>
-          <input type="number" id="alert-count" value="10" min="1" class="alert-input">
-          <span>mints in</span>
-          <select id="alert-window" class="alert-select">
-            <option value="60000">1 min</option>
-            <option value="180000">3 min</option>
-            <option value="300000" selected>5 min</option>
-            <option value="600000">10 min</option>
-          </select>
+        <div class="alert-panel-top">
+          <span class="alert-panel-header">Mint Alerts</span>
+          <button id="alert-add" class="alert-add-btn">+ Add Rule</button>
         </div>
-        <div class="alert-row">
-          <label class="alert-toggle-label">
-            <input type="checkbox" id="alert-enabled">
-            <span>Enabled</span>
-          </label>
-          <button id="alert-test" class="alert-test-btn">Test</button>
-        </div>
+        <div id="alert-rules"></div>
       </div>
     </div>
     <div class="header-right">
