@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>YujiWatch - Live Ethereum Mints</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <div class="logo">
+      <img src="yuji.jpeg" alt="" class="logo-icon">
+      <span>YujiWatch</span>
+    </div>
+    <div class="search-box">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+      <input type="text" id="search-input" placeholder="Search by collection Name or Address">
+    </div>
+    <div class="header-right">
+      <span id="status" class="status offline">&#9679; Connecting...</span>
+      <span id="gas-display" class="gas-display">&#9981; -- gwei</span>
+    </div>
+  </header>
+
+  <main>
+    <!-- Left Sidebar: Mints Overview -->
+    <aside class="sidebar-left">
+      <div class="sidebar-header">
+        <h2>Mints Overview</h2>
+        <span class="mintable-btn">Mintable</span>
+      </div>
+      <div class="time-filters">
+        <button data-window="60000">1m</button>
+        <button data-window="180000">3m</button>
+        <button data-window="300000" class="active">5m</button>
+        <button data-window="600000">10m</button>
+        <button data-window="1800000">30m</button>
+        <button data-window="3600000">1h</button>
+        <button data-window="10800000">3h</button>
+        <button data-window="21600000">6h</button>
+        <button data-window="43200000">12h</button>
+        <button data-window="86400000">24h</button>
+      </div>
+      <div id="overview-list" class="overview-list">
+        <p class="empty-state">No mints in this window yet</p>
+      </div>
+    </aside>
+
+    <!-- Center: Collection Detail -->
+    <section class="center-panel">
+      <div class="no-selection" id="no-selection">
+        <img src="yuji.jpeg" alt="" class="no-selection-icon">
+        <h2>YujiWatch</h2>
+        <p>Click on a collection to see details</p>
+        <div class="global-stats">
+          <div class="gs-item">
+            <div class="gs-value" id="stat-total">0</div>
+            <div class="gs-label">Mints Tracked</div>
+          </div>
+          <div class="gs-item">
+            <div class="gs-value" id="stat-collections">0</div>
+            <div class="gs-label">Collections</div>
+          </div>
+          <div class="gs-item">
+            <div class="gs-value" id="stat-rate">0</div>
+            <div class="gs-label">Mints/min</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="collection-detail" id="collection-detail" style="display:none">
+        <div class="detail-top">
+          <div class="detail-avatar" id="detail-avatar">?</div>
+          <div class="detail-info">
+            <div class="detail-name-row">
+              <h1 id="detail-name">Collection</h1>
+            </div>
+            <div class="detail-addr-row">
+              <a class="detail-address" id="detail-address" target="_blank" rel="noopener">0x...</a>
+              <button class="copy-btn" id="copy-addr" title="Copy address">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              </button>
+            </div>
+            <div class="detail-badges" id="detail-badges">
+              <span class="badge badge-verified" id="badge-verified" style="display:none">&#10003; Verified</span>
+              <span class="badge" id="detail-standard">ERC-721</span>
+            </div>
+            <div class="detail-icons">
+              <a id="detail-etherscan" target="_blank" rel="noopener" title="View on Etherscan">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                <span>Etherscan</span>
+              </a>
+              <a id="detail-opensea" target="_blank" rel="noopener" title="View on OpenSea">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                <span>OpenSea</span>
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-label">Total Minted</div>
+            <div class="stat-value" id="detail-supply">&mdash;</div>
+            <div class="stat-sub" id="detail-supply-pct"></div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Max Supply</div>
+            <div class="stat-value" id="detail-max">?</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Unique Minters</div>
+            <div class="stat-value" id="detail-minters">&mdash;</div>
+          </div>
+        </div>
+
+        <div class="detail-deploy-info" id="detail-deploy">
+          <div class="deploy-row">
+            <span>Deployed By</span>
+            <a id="deploy-wallet" class="deploy-link" target="_blank" rel="noopener">&mdash;</a>
+            <a id="deploy-time" class="deploy-link" target="_blank" rel="noopener"></a>
+          </div>
+          <div class="deploy-row">
+            First minted <strong id="first-mint-time">&mdash;</strong>,
+            Last minted <strong id="last-mint-time">&mdash;</strong>
+          </div>
+        </div>
+
+        <div class="detail-section">
+          <h3>Recent Mints <span class="detail-mint-count" id="detail-tracked">0</span></h3>
+          <div id="detail-mints" class="detail-mints-list"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Right Sidebar: Live Mints -->
+    <aside class="sidebar-right">
+      <div class="feed-header">
+        <h2>Live Mints</h2>
+        <span class="live-dot">&#9679; Live</span>
+      </div>
+      <div class="feed-controls">
+        <span>Min <input type="number" id="filter-min" value="0" min="0"></span>
+        <span>Max <input type="number" id="filter-max" value="1000" min="0"></span>
+        <label>Free <input type="checkbox" id="filter-free"></label>
+        <label>Only &#9670; <input type="checkbox" id="filter-paid"></label>
+      </div>
+      <div id="mint-feed" class="mint-feed"></div>
+    </aside>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

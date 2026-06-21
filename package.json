@@ -1,0 +1,15 @@
+{
+  "name": "mint-tracker",
+  "version": "1.0.0",
+  "description": "Real-time Ethereum NFT mint tracker",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "ethers": "^6.13.4",
+    "express": "^4.21.1",
+    "ws": "^8.18.0"
+  }
+}

@@ -1,0 +1,493 @@
+const mintFeed = document.getElementById('mint-feed');
+const statusEl = document.getElementById('status');
+const gasEl = document.getElementById('gas-display');
+const overviewList = document.getElementById('overview-list');
+const noSelection = document.getElementById('no-selection');
+const detailEl = document.getElementById('collection-detail');
+
+const allMints = [];
+const collections = new Map();
+const imageCache = new Map();
+const imagePending = new Set();
+let activeTimeWindow = 300000;
+let selectedCollection = null;
+let lastGasPrice = 0;
+
+function avatarHtml(contract, name, cls) {
+  const initial = name ? name.charAt(0).toUpperCase() : '?';
+  const img = imageCache.get(contract);
+  if (img) {
+    return `<img src="${img}" alt="" class="${cls}" onerror="this.outerHTML='<div class=\\'${cls}\\'>${initial}</div>'">`;
+  }
+  return `<div class="${cls}">${initial}</div>`;
+}
+
+function fetchImage(contract) {
+  if (imageCache.has(contract) || imagePending.has(contract)) return;
+  imagePending.add(contract);
+  fetch(`/api/image/${contract}`)
+    .then(r => r.json())
+    .then(data => {
+      imagePending.delete(contract);
+      if (data.image) {
+        imageCache.set(contract, data.image);
+        updateAvatars(contract);
+      }
+    })
+    .catch(() => imagePending.delete(contract));
+}
+
+function updateAvatars(contract) {
+  const img = imageCache.get(contract);
+  if (!img) return;
+  document.querySelectorAll(`[data-contract="${contract}"] .me-avatar`).forEach(el => {
+    el.outerHTML = `<img src="${img}" alt="" class="me-avatar" onerror="this.outerHTML='<div class=\\'me-avatar\\'>?</div>'">`;
+  });
+  document.querySelectorAll(`.ov-card[data-addr="${contract}"] .ov-avatar`).forEach(el => {
+    el.outerHTML = `<img src="${img}" alt="" class="ov-avatar" onerror="this.outerHTML='<div class=\\'ov-avatar\\'>?</div>'">`;
+  });
+  if (selectedCollection === contract) {
+    const detailAvatar = document.getElementById('detail-avatar');
+    detailAvatar.innerHTML = `<img src="${img}" alt="" style="width:100%;height:100%;object-fit:cover;">`;
+  }
+}
+
+// Etherscan link SVG
+const etherscanSvg = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>`;
+
+function timeAgo(ts) {
+  const s = Math.floor((Date.now() - ts) / 1000);
+  if (s < 60) return s + 's';
+  const m = Math.floor(s / 60);
+  if (m < 60) return m + 'm';
+  return Math.floor(m / 60) + 'h';
+}
+
+function shortAddr(addr) {
+  if (!addr) return '???';
+  return addr.slice(0, 6) + '...' + addr.slice(-4);
+}
+
+function formatValue(value) {
+  const n = parseFloat(value);
+  if (n === 0) return 'Free';
+  if (n < 0.0001) return '< 0.0001 ETH';
+  if (n < 0.01) return 'Ξ ' + n.toFixed(4);
+  return 'Ξ ' + n.toFixed(3);
+}
+
+function formatNumber(n) {
+  if (n === null || n === undefined) return '—';
+  const num = parseInt(n);
+  if (isNaN(num)) return n;
+  return num.toLocaleString();
+}
+
+// ===== LIVE MINT CARD =====
+function createMintEntry(mint) {
+  const el = document.createElement('div');
+  el.className = 'mint-entry new';
+  el.dataset.contract = mint.contract;
+  el.dataset.txhash = mint.txHash;
+
+  const isFree = parseFloat(mint.value) === 0;
+  const priceLabel = formatValue(mint.value);
+  const weiVal = mint.valueWei || '0';
+  const qty = mint.quantity || 1;
+  const fnLabel = mint.fnName && !mint.fnName.startsWith('0x') ? mint.fnName : 'mint';
+  const time = timeAgo(mint.timestamp);
+  const gas = mint.gasPrice || 0;
+
+  el.innerHTML = `
+    ${avatarHtml(mint.contract, mint.name, 'me-avatar')}
+    <div class="me-body">
+      <div class="me-name" title="${mint.name}">${mint.name}</div>
+      <div class="me-meta">
+        <span class="me-price ${isFree ? 'free' : 'paid'}">${priceLabel}</span>
+        <span class="sep">|</span>
+        <span class="me-amount">A ${qty} ${weiVal === '0' ? '0' : weiVal}wei</span>
+        <span class="sep">|</span>
+        <span class="me-fn">&#9670; ${fnLabel}</span>
+        <span class="sep">|</span>
+        <span class="me-gas">&#9981; ${gas}</span>
+      </div>
+    </div>
+    <div class="me-right">
+      <span class="me-time">&lt; ${time}</span>
+      <div class="me-links">
+        <a href="https://etherscan.io/tx/${mint.txHash}" target="_blank" rel="noopener"
+           title="View tx on Etherscan" onclick="event.stopPropagation()">${etherscanSvg}</a>
+      </div>
+    </div>
+  `;
+
+  el.addEventListener('click', (e) => {
+    if (e.target.closest('a')) return;
+    showCollection(mint.contract);
+  });
+  setTimeout(() => el.classList.remove('new'), 300);
+
+  return el;
+}
+
+// ===== ADD MINT =====
+function addMint(mint, prepend) {
+  allMints.unshift(mint);
+  if (allMints.length > 500) allMints.pop();
+
+  if (!collections.has(mint.contract)) {
+    collections.set(mint.contract, {
+      name: mint.name,
+      symbol: mint.symbol,
+      standard: mint.standard,
+      totalSupply: mint.totalSupply,
+      minters: new Set(),
+      mints: [],
+      lastPrice: mint.value,
+      lastGas: mint.gasPrice,
+    });
+    fetchImage(mint.contract);
+  }
+
+  const col = collections.get(mint.contract);
+  col.mints.unshift(mint);
+  if (mint.minter) col.minters.add(mint.minter);
+  if (mint.name) col.name = mint.name;
+  if (mint.totalSupply) col.totalSupply = mint.totalSupply;
+  col.lastPrice = mint.value;
+  col.lastGas = mint.gasPrice;
+
+  // Update gas display
+  if (mint.gasPrice && mint.gasPrice > 0) {
+    lastGasPrice = mint.gasPrice;
+    gasEl.innerHTML = `&#9981; ${lastGasPrice} gwei`;
+  }
+
+  // Add to live feed
+  const entry = createMintEntry(mint);
+  if (prepend !== false) {
+    mintFeed.prepend(entry);
+  } else {
+    mintFeed.appendChild(entry);
+  }
+
+  while (mintFeed.children.length > 200) {
+    mintFeed.lastChild.remove();
+  }
+
+  // If this collection is selected, update detail
+  if (selectedCollection === mint.contract) {
+    showCollection(mint.contract);
+  }
+}
+
+// ===== LEFT SIDEBAR: OVERVIEW =====
+function updateOverview() {
+  const cutoff = Date.now() - activeTimeWindow;
+
+  const ranked = [];
+  for (const [addr, col] of collections) {
+    const recent = col.mints.filter(m => m.timestamp > cutoff);
+    if (recent.length === 0) continue;
+    ranked.push({ address: addr, ...col, recentCount: recent.length });
+  }
+
+  ranked.sort((a, b) => b.recentCount - a.recentCount);
+
+  overviewList.innerHTML = '';
+
+  if (ranked.length === 0) {
+    const windowLabel = activeTimeWindow < 60000 ? '1m' :
+      activeTimeWindow < 300000 ? (activeTimeWindow / 60000) + 'm' :
+      activeTimeWindow < 3600000 ? (activeTimeWindow / 60000) + 'm' :
+      (activeTimeWindow / 3600000) + 'h';
+    overviewList.innerHTML = `<p class="empty-state">No mints in the last ${windowLabel}</p>`;
+    return;
+  }
+
+  for (const col of ranked.slice(0, 50)) {
+    const card = document.createElement('div');
+    card.className = 'ov-card' + (selectedCollection === col.address ? ' active' : '');
+    card.dataset.addr = col.address;
+
+    card.innerHTML = `
+      ${avatarHtml(col.address, col.name, 'ov-avatar')}
+      <div class="ov-body">
+        <div class="ov-name" title="${col.name}">${col.name}</div>
+        <div class="ov-sub">
+          <span>${col.standard}</span>
+          <span>${shortAddr(col.address)}</span>
+        </div>
+      </div>
+      <span class="ov-count">${col.recentCount}</span>
+      <span class="ov-price">${formatValue(col.lastPrice)}</span>
+    `;
+
+    card.addEventListener('click', () => showCollection(col.address));
+    overviewList.appendChild(card);
+  }
+}
+
+// ===== CENTER: COLLECTION DETAIL =====
+function timeAgoLabel(ts) {
+  if (!ts) return '—';
+  const s = Math.floor((Date.now() - ts) / 1000);
+  if (s < 60) return s + 's ago';
+  const m = Math.floor(s / 60);
+  if (m < 60) return m + 'm ago';
+  const h = Math.floor(m / 60);
+  if (h < 24) return h + 'h ago';
+  return Math.floor(h / 24) + 'd ago';
+}
+
+async function showCollection(address) {
+  const col = collections.get(address);
+  if (!col) return;
+
+  selectedCollection = address;
+  noSelection.style.display = 'none';
+  detailEl.style.display = 'block';
+
+  // Immediate data from local state
+  const initial = col.name ? col.name.charAt(0).toUpperCase() : '?';
+  const detailAvatar = document.getElementById('detail-avatar');
+  const cachedImg = imageCache.get(address);
+  if (cachedImg) {
+    detailAvatar.innerHTML = `<img src="${cachedImg}" alt="" style="width:100%;height:100%;object-fit:cover;">`;
+  } else {
+    detailAvatar.textContent = initial;
+  }
+  document.getElementById('detail-name').textContent = col.name;
+
+  const badgeEl = document.getElementById('detail-standard');
+  badgeEl.textContent = col.standard;
+  badgeEl.className = 'badge ' + (col.standard === 'ERC-721' ? 'badge-721' : 'badge-1155');
+
+  document.getElementById('badge-verified').style.display = 'none';
+
+  const addrEl = document.getElementById('detail-address');
+  addrEl.textContent = shortAddr(address);
+  addrEl.href = 'https://etherscan.io/address/' + address;
+
+  document.getElementById('detail-etherscan').href = 'https://etherscan.io/address/' + address;
+  document.getElementById('detail-opensea').href = `https://opensea.io/assets/ethereum/${address}`;
+
+  document.getElementById('detail-supply').textContent = formatNumber(col.totalSupply);
+  document.getElementById('detail-supply-pct').textContent = '';
+  document.getElementById('detail-max').textContent = '?';
+  document.getElementById('detail-minters').textContent = col.minters.size.toLocaleString();
+  document.getElementById('detail-tracked').textContent = col.mints.length;
+
+  // Deploy info placeholders
+  document.getElementById('deploy-wallet').textContent = '...';
+  document.getElementById('deploy-wallet').href = '#';
+  document.getElementById('deploy-time').textContent = '';
+  document.getElementById('deploy-time').href = '#';
+
+  // First/last mint from local data
+  const localFirst = col.mints.length > 0 ? col.mints[col.mints.length - 1] : null;
+  const localLast = col.mints.length > 0 ? col.mints[0] : null;
+  document.getElementById('first-mint-time').textContent = localFirst ? timeAgoLabel(localFirst.timestamp) : '—';
+  document.getElementById('last-mint-time').textContent = localLast ? timeAgoLabel(localLast.timestamp) : '—';
+
+  document.getElementById('copy-addr').onclick = () => navigator.clipboard.writeText(address);
+
+  // Render mints list
+  renderDetailMints(col);
+  updateOverview();
+
+  // Fetch extended details from server
+  try {
+    const resp = await fetch(`/api/collection/${address}`);
+    const data = await resp.json();
+
+    // Collection image
+    if (data.image && !imageCache.has(address)) {
+      imageCache.set(address, data.image);
+      updateAvatars(address);
+    }
+
+    // Verified badge
+    if (data.verified) {
+      document.getElementById('badge-verified').style.display = 'inline';
+    }
+
+    // Max supply
+    if (data.maxSupply) {
+      document.getElementById('detail-max').textContent = formatNumber(data.maxSupply);
+      // Calculate percentage
+      if (data.totalSupply && data.maxSupply) {
+        const pct = ((parseInt(data.totalSupply) / parseInt(data.maxSupply)) * 100).toFixed(1);
+        document.getElementById('detail-supply-pct').textContent = `(${pct}%)`;
+      }
+    }
+
+    // OpenSea link (with proper slug if available)
+    if (data.openseaUrl) {
+      document.getElementById('detail-opensea').href = data.openseaUrl;
+    }
+
+    // Deployer
+    if (data.deployer) {
+      const walletEl = document.getElementById('deploy-wallet');
+      walletEl.textContent = shortAddr(data.deployer);
+      walletEl.href = `https://etherscan.io/address/${data.deployer}`;
+    }
+
+    if (data.deployTx) {
+      const timeEl = document.getElementById('deploy-time');
+      timeEl.textContent = data.deployTime ? timeAgoLabel(data.deployTime) : '';
+      timeEl.href = `https://etherscan.io/tx/${data.deployTx}`;
+    }
+
+    // First/last from server (more accurate if more history)
+    if (data.firstMintTime) {
+      document.getElementById('first-mint-time').textContent = timeAgoLabel(data.firstMintTime);
+    }
+    if (data.lastMintTime) {
+      document.getElementById('last-mint-time').textContent = timeAgoLabel(data.lastMintTime);
+    }
+
+    // Update unique minters from server
+    if (data.uniqueMinters) {
+      document.getElementById('detail-minters').textContent = data.uniqueMinters.toLocaleString();
+    }
+
+  } catch {}
+}
+
+function renderDetailMints(col) {
+  const mintsList = document.getElementById('detail-mints');
+  mintsList.innerHTML = '';
+
+  for (const mint of col.mints.slice(0, 40)) {
+    const row = document.createElement('div');
+    row.className = 'detail-mint-row';
+    const fnLabel = mint.fnName && !mint.fnName.startsWith('0x') ? mint.fnName : 'mint';
+    row.innerHTML = `
+      <span class="dmr-minter">${shortAddr(mint.minter)}</span>
+      <span class="dmr-price">${formatValue(mint.value)}</span>
+      <span class="dmr-fn">&#9670; ${fnLabel}</span>
+      <span class="dmr-time">
+        &lt; ${timeAgo(mint.timestamp)}
+        <a href="https://etherscan.io/tx/${mint.txHash}" target="_blank" rel="noopener" title="View tx">${etherscanSvg}</a>
+      </span>
+    `;
+    mintsList.appendChild(row);
+  }
+}
+
+// ===== TIME FILTERS =====
+document.querySelectorAll('.time-filters button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelector('.time-filters .active').classList.remove('active');
+    btn.classList.add('active');
+    activeTimeWindow = parseInt(btn.dataset.window);
+    updateOverview();
+  });
+});
+
+// ===== SEARCH =====
+document.getElementById('search-input').addEventListener('input', (e) => {
+  const q = e.target.value.toLowerCase().trim();
+  if (!q) {
+    updateOverview();
+    return;
+  }
+
+  const results = [];
+  for (const [addr, col] of collections) {
+    if (col.name.toLowerCase().includes(q) || addr.toLowerCase().includes(q)) {
+      results.push({ address: addr, ...col, recentCount: col.mints.length });
+    }
+  }
+
+  results.sort((a, b) => b.recentCount - a.recentCount);
+  overviewList.innerHTML = '';
+
+  if (results.length === 0) {
+    overviewList.innerHTML = '<p class="empty-state">No results</p>';
+    return;
+  }
+
+  for (const col of results.slice(0, 30)) {
+    const card = document.createElement('div');
+    card.className = 'ov-card';
+    card.dataset.addr = col.address;
+    card.innerHTML = `
+      ${avatarHtml(col.address, col.name, 'ov-avatar')}
+      <div class="ov-body">
+        <div class="ov-name">${col.name}</div>
+        <div class="ov-sub"><span>${col.standard}</span></div>
+      </div>
+      <span class="ov-count">${col.recentCount}</span>
+      <span class="ov-price">${formatValue(col.lastPrice)}</span>
+    `;
+    card.addEventListener('click', () => showCollection(col.address));
+    overviewList.appendChild(card);
+  }
+});
+
+// ===== WEBSOCKET =====
+function connect() {
+  const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const ws = new WebSocket(`${protocol}//${location.host}/ws`);
+
+  ws.onopen = () => {
+    statusEl.innerHTML = '&#9679; Connected';
+    statusEl.className = 'status online';
+  };
+
+  ws.onclose = () => {
+    statusEl.innerHTML = '&#9679; Reconnecting...';
+    statusEl.className = 'status offline';
+    setTimeout(connect, 3000);
+  };
+
+  ws.onerror = () => ws.close();
+
+  ws.onmessage = (event) => {
+    const msg = JSON.parse(event.data);
+
+    if (msg.type === 'mint') {
+      addMint(msg.data);
+      updateOverview();
+    } else if (msg.type === 'history') {
+      for (const m of msg.mints.reverse()) {
+        addMint(m, false);
+      }
+      updateOverview();
+    } else if (msg.type === 'status') {
+      if (msg.connected) {
+        statusEl.innerHTML = `&#9679; ${msg.network}`;
+        statusEl.className = 'status online';
+      } else {
+        statusEl.innerHTML = `&#9679; ${msg.message || 'Disconnected'}`;
+        statusEl.className = 'status offline';
+      }
+    } else if (msg.type === 'update') {
+      const mint = allMints.find(m => m.txHash === msg.txHash && m.contract === msg.contract);
+      if (mint) {
+        mint.quantity = msg.quantity;
+        const el = mintFeed.querySelector(`[data-txhash="${msg.txHash}"]`);
+        if (el) {
+          const amtEl = el.querySelector('.me-amount');
+          if (amtEl) amtEl.textContent = `A ${msg.quantity} ${mint.valueWei || '0'}wei`;
+        }
+      }
+    }
+  };
+}
+
+connect();
+
+// ===== PERIODIC UPDATES =====
+setInterval(() => {
+  const oneMinAgo = Date.now() - 60_000;
+  const rate = allMints.filter(m => m.timestamp > oneMinAgo).length;
+  document.getElementById('stat-total').textContent = allMints.length.toLocaleString();
+  document.getElementById('stat-collections').textContent = collections.size.toLocaleString();
+  document.getElementById('stat-rate').textContent = rate;
+}, 3000);
+
+setInterval(updateOverview, 8000);
