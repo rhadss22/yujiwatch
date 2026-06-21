@@ -256,6 +256,13 @@ header {
   font-family: inherit;
 }
 
+.alert-sound-row {
+  display: flex;
+  gap: 4px;
+  margin-top: 6px;
+  align-items: center;
+}
+
 .alert-select-sound {
   background: var(--bg-input);
   border: 1px solid var(--border);
@@ -263,8 +270,7 @@ header {
   padding: 3px 5px;
   font-size: 10px;
   font-family: inherit;
-  width: 100%;
-  margin-top: 6px;
+  flex: 1;
 }
 
 .alert-rule-bottom {

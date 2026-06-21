@@ -499,9 +499,6 @@ const ALERT_SOUNDS = [
   { file: 'universfield-new-notification-09-352705.mp3', label: 'Notification' },
 ];
 
-const audioCache = {};
-ALERT_SOUNDS.forEach(s => { audioCache[s.file] = new Audio(s.file); });
-
 let alertRules = JSON.parse(localStorage.getItem('yuji-alerts') || '[]');
 if (alertRules.length === 0) {
   alertRules.push({ count: 10, window: 300000, sound: ALERT_SOUNDS[0].file, enabled: true, soundOn: true });
@@ -538,7 +535,10 @@ function renderAlertRules() {
         <span>mints in</span>
         <select class="alert-select" data-field="window">${windowOpts}</select>
       </div>
-      <select class="alert-select-sound" data-field="sound">${soundOpts}</select>
+      <div class="alert-sound-row">
+        <select class="alert-select-sound" data-field="sound">${soundOpts}</select>
+        <button class="alert-rule-btn" data-action="play">&#9654;</button>
+      </div>
       <div class="alert-rule-bottom">
         <label><input type="checkbox" ${rule.enabled ? 'checked' : ''} data-field="enabled"> ON</label>
         <label><input type="checkbox" ${rule.soundOn ? 'checked' : ''} data-field="soundOn"> &#128266;</label>
@@ -563,13 +563,16 @@ function renderAlertRules() {
 
     div.addEventListener('click', (e) => {
       const action = e.target.dataset.action;
-      if (action === 'test') {
+      if (action === 'play') {
+        const audio = new Audio(rule.sound);
+        audio.play();
+      } else if (action === 'test') {
+        const audio = new Audio(rule.sound);
+        if (rule.soundOn) audio.play();
         if (Notification.permission === 'default') {
-          Notification.requestPermission().then(p => {
-            if (p === 'granted') fireAlert(rule, 'Test Collection', '0x0000', 99);
-          });
-        } else {
-          fireAlert(rule, 'Test Collection', '0x0000', 99);
+          Notification.requestPermission();
+        } else if (Notification.permission === 'granted') {
+          new Notification('🔥 Test Collection', { body: 'Test alert working!', icon: 'yuji.jpeg', silent: true });
         }
       } else if (action === 'delete') {
         alertRules.splice(i, 1);
@@ -612,8 +615,8 @@ function fireAlert(rule, name, contract, count) {
     n.onclick = () => { window.focus(); showCollection(contract); n.close(); };
   }
   if (rule.soundOn && rule.sound) {
-    const audio = audioCache[rule.sound];
-    if (audio) { audio.currentTime = 0; audio.play().catch(() => {}); }
+    const audio = new Audio(rule.sound);
+    audio.play().catch(() => {});
   }
 }
 
