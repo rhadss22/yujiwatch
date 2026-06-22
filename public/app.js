@@ -612,7 +612,7 @@ function connect() {
         }
       }
     } else if (msg.type === 'gas') {
-      gasEl.innerHTML = `&#9981; ${msg.base.toFixed(1)} gwei`;
+      gasEl.innerHTML = `&#9981; ${msg.base.toFixed(2)} gwei`;
     }
   };
 }
