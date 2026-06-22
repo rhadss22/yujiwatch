@@ -561,8 +561,30 @@ function connect() {
       checkAlerts(msg.data);
       updateOverview();
     } else if (msg.type === 'history') {
-      for (const m of msg.mints.reverse()) {
-        addMint(m, false);
+      const reversed = msg.mints.reverse();
+      // Add all to data without DOM for performance
+      for (const mint of reversed) {
+        allMints.unshift(mint);
+        if (!collections.has(mint.contract)) {
+          collections.set(mint.contract, {
+            name: mint.name, symbol: mint.symbol, standard: mint.standard,
+            totalSupply: mint.totalSupply, minters: new Set(), mints: [],
+            lastPrice: mint.value, lastGas: mint.gasPrice,
+          });
+          fetchImage(mint.contract);
+        }
+        const col = collections.get(mint.contract);
+        col.mints.unshift(mint);
+        if (mint.minter) col.minters.add(mint.minter);
+        if (mint.name) col.name = mint.name;
+        if (mint.totalSupply) col.totalSupply = mint.totalSupply;
+        col.lastPrice = mint.value;
+        col.lastGas = mint.gasPrice;
+      }
+      // Only render last 200 in live feed DOM
+      const feedMints = reversed.filter(m => !hiddenCollections.has(m.contract)).slice(-200);
+      for (const mint of feedMints) {
+        mintFeed.appendChild(createMintEntry(mint));
       }
       updateOverview();
     } else if (msg.type === 'status') {
@@ -595,10 +617,6 @@ function connect() {
           }
         }
       }
-    } else if (msg.type === 'viewers' && isAdmin) {
-      const vd = document.getElementById('viewers-display');
-      vd.style.display = '';
-      vd.innerHTML = `&#128065; ${msg.online} online | ${msg.total} total`;
     }
   };
 }
@@ -858,3 +876,18 @@ setInterval(() => {
 }, 3000);
 
 setInterval(updateOverview, 8000);
+
+// ===== ADMIN VIEWERS (poll API) =====
+if (isAdmin) {
+  const vd = document.getElementById('viewers-display');
+  vd.style.display = '';
+  async function pollViewers() {
+    try {
+      const r = await fetch('/api/viewers');
+      const d = await r.json();
+      vd.innerHTML = `&#128065; ${d.online} online | ${d.total} total`;
+    } catch {}
+  }
+  pollViewers();
+  setInterval(pollViewers, 10000);
+}

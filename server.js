@@ -70,21 +70,13 @@ async function throttled(fn) {
 let currentStatus = { type: 'status', connected: false, message: 'Starting...' };
 const uniqueIPs = new Set();
 
-function broadcastViewers() {
-  broadcast({ type: 'viewers', online: clients.size, total: uniqueIPs.size });
-}
-
 wss.on('connection', (ws, req) => {
   clients.add(ws);
   const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket.remoteAddress;
   uniqueIPs.add(ip);
   ws.send(JSON.stringify(currentStatus));
   ws.send(JSON.stringify({ type: 'history', mints: recentMints }));
-  broadcastViewers();
-  ws.on('close', () => {
-    clients.delete(ws);
-    broadcastViewers();
-  });
+  ws.on('close', () => clients.delete(ws));
 });
 
 function broadcast(data) {
@@ -531,6 +523,10 @@ app.get('/api/holders/:address', async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message, holders: [] });
   }
+});
+
+app.get('/api/viewers', (req, res) => {
+  res.json({ online: clients.size, total: uniqueIPs.size });
 });
 
 app.get('/api/stats', (req, res) => {
