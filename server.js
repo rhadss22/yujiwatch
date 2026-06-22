@@ -76,6 +76,7 @@ wss.on('connection', (ws, req) => {
   uniqueIPs.add(ip);
   ws.send(JSON.stringify(currentStatus));
   ws.send(JSON.stringify({ type: 'history', mints: recentMints }));
+  if (currentGas) ws.send(JSON.stringify({ type: 'gas', ...currentGas }));
   ws.on('close', () => clients.delete(ws));
 });
 
@@ -85,6 +86,29 @@ function broadcast(data) {
     if (c.readyState === WebSocket.OPEN) c.send(msg);
   }
 }
+
+// ===== GAS TRACKER =====
+let currentGas = null;
+
+async function pollGas() {
+  try {
+    const key = process.env.ETHERSCAN_API_KEY || '';
+    const keyParam = key ? `&apikey=${key}` : '';
+    const resp = await fetch(`https://api.etherscan.io/api?module=gastracker&action=gasoracle${keyParam}`);
+    const data = await resp.json();
+    if (data.status === '1' && data.result) {
+      currentGas = {
+        low: parseFloat(data.result.SafeGasPrice),
+        avg: parseFloat(data.result.ProposeGasPrice),
+        high: parseFloat(data.result.FastGasPrice),
+        base: parseFloat(data.result.suggestBaseFee),
+      };
+      broadcast({ type: 'gas', ...currentGas });
+    }
+  } catch {}
+}
+
+setInterval(pollGas, 15_000);
 
 // Event signatures
 const TRANSFER_SIG = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
@@ -543,4 +567,5 @@ const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`\n  YujiWatch running on http://localhost:${PORT}\n`);
   startListener();
+  pollGas();
 });

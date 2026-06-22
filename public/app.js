@@ -177,12 +177,6 @@ function addMint(mint, prepend) {
   col.lastPrice = mint.value;
   col.lastGas = mint.gasPrice;
 
-  // Update gas display
-  if (mint.gasPrice && mint.gasPrice > 0) {
-    lastGasPrice = mint.gasPrice;
-    gasEl.innerHTML = `&#9981; ${lastGasPrice} gwei`;
-  }
-
   // Add to live feed
   const entry = createMintEntry(mint);
   if (hiddenCollections.has(mint.contract)) entry.style.display = 'none';
@@ -617,6 +611,8 @@ function connect() {
           }
         }
       }
+    } else if (msg.type === 'gas') {
+      gasEl.innerHTML = `&#9981; ${msg.base.toFixed(1)} gwei`;
     }
   };
 }
