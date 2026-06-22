@@ -91,6 +91,7 @@ function broadcast(data) {
 let currentGas = null;
 
 async function pollGas() {
+  // Try Etherscan first
   try {
     const key = process.env.ETHERSCAN_API_KEY || '';
     const keyParam = key ? `&apikey=${key}` : '';
@@ -104,8 +105,25 @@ async function pollGas() {
         base: parseFloat(data.result.suggestBaseFee),
       };
       broadcast({ type: 'gas', ...currentGas });
+      return;
     }
-  } catch {}
+  } catch (e) {
+    console.error('Etherscan gas error:', e.message);
+  }
+  // Fallback: get base fee from RPC
+  try {
+    const p = httpProvider || wsProvider;
+    if (p) {
+      const block = await p.getBlock('latest');
+      if (block?.baseFeePerGas) {
+        const base = parseFloat(ethers.formatUnits(block.baseFeePerGas, 'gwei'));
+        currentGas = { low: base, avg: base, high: base, base };
+        broadcast({ type: 'gas', ...currentGas });
+      }
+    }
+  } catch (e) {
+    console.error('RPC gas fallback error:', e.message);
+  }
 }
 
 setInterval(pollGas, 15_000);
